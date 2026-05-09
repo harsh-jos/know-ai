@@ -1,0 +1,677 @@
+[
+  {
+    "id": "generative-ai-systems",
+    "order": 1,
+    "chapter": "Orientation",
+    "title": "Generative AI Systems",
+    "read_time_min": 4,
+    "is_learned": false,
+    "content": "A generative AI system is not just a model that emits text, images, audio, or code. It is a model plus a surrounding control system: instructions, context selection, retrieval, tools, memory, safety checks, evals, and product decisions about what reaches the user.\n\nFor a technical builder, the important split is between capability and orchestration. A strong model may still fail if the system feeds it irrelevant context, exposes unsafe tools, or never verifies outputs. A weaker model can feel surprisingly good inside a narrow workflow with clean context and tight evaluation.\n\nWhen debugging a generative AI product, avoid asking only whether the model is good. Ask what information it saw, what action space it had, what constraints shaped the output, and how the system knew whether the result was acceptable."
+  },
+  {
+    "id": "autoregressive-generation",
+    "order": 2,
+    "chapter": "LLM Basics",
+    "title": "Autoregressive Generation",
+    "read_time_min": 4,
+    "is_learned": false,
+    "content": "Most language models generate by predicting the next token from the previous tokens, then appending that token and repeating the process. This is autoregressive generation. The model does not draft a whole answer in one internal document and then print it; the answer unfolds one token decision at a time.\n\nThis explains several behaviors that matter in practice. Early tokens can steer the entire continuation. Long answers can drift because every new token becomes part of the future context. Streaming is natural because each token becomes available as soon as it is sampled.\n\nThe model's next-token distribution is shaped by the prompt, system instructions, retrieved context, tool results, decoding settings, and previous generated tokens. Generation quality is therefore partly a modeling problem and partly an information-control problem."
+  },
+  {
+    "id": "tokens-and-tokenizers",
+    "order": 3,
+    "chapter": "LLM Basics",
+    "title": "Tokens And Tokenizers",
+    "read_time_min": 4,
+    "is_learned": false,
+    "content": "LLMs process tokens, not characters, words, or abstract meanings. A tokenizer maps text into integer IDs from a vocabulary. Common words may be one token; rare words, code, names, emojis, or non-English text may split into several tokens.\n\nTokenization affects cost, latency, context limits, and sometimes model behavior. A prompt that looks short in characters can be expensive if it contains code, JSON, or unusual strings. Exact formatting can also matter because whitespace and punctuation may produce different token sequences.\n\nFor builders, tokenization is worth understanding at the boundary level. You do not need to obsess over every token, but you should know that the model's input is a compressed symbolic stream whose shape is not identical to what a human sees on screen."
+  },
+  {
+    "id": "context-window",
+    "order": 4,
+    "chapter": "LLM Basics",
+    "title": "Context Window",
+    "read_time_min": 4,
+    "is_learned": false,
+    "content": "The context window is the maximum amount of input and output the model can consider in one request. It is not memory. It is the model's temporary working area for that inference call.\n\nLong context is powerful, but it does not remove the need for context engineering. If you fill the window with stale logs, duplicate documents, irrelevant chat history, and tool noise, the model has more to search through and more chances to attend to the wrong thing. A larger window increases capacity; it does not guarantee better selection.\n\nA useful rule is: context should be sufficient, relevant, current, and structured. If the model fails on a long-context task, inspect what it saw before blaming reasoning. Many failures are really context selection failures."
+  },
+  {
+    "id": "attention-in-llms",
+    "order": 5,
+    "chapter": "Architecture",
+    "title": "Attention In LLMs",
+    "read_time_min": 5,
+    "is_learned": false,
+    "content": "Attention lets a token representation depend on other token representations. In a decoder-only language model, each position can attend to earlier positions, allowing the model to use prior text when predicting the next token.\n\nThe practical idea is not that attention equals human attention. It is a learned routing mechanism. The model computes queries, keys, and values, compares queries to keys, and mixes values according to the resulting weights. Stacking many attention layers lets the model build increasingly contextual representations.\n\nAttention is why transformers can connect distant pieces of text better than older sequence models, but it is also why long contexts are computationally expensive. Every new token needs to relate to previous tokens, and serving systems spend serious engineering effort making that efficient."
+  },
+  {
+    "id": "transformer-block",
+    "order": 6,
+    "chapter": "Architecture",
+    "title": "The Transformer Block",
+    "read_time_min": 5,
+    "is_learned": false,
+    "content": "A transformer block is the repeated unit inside most modern LLMs. In simplified form, it contains attention, a feed-forward network, residual connections, and normalization. The block receives token representations and returns improved token representations.\n\nAttention moves information across positions. The feed-forward network transforms information within each position. Residual connections preserve signal across depth, and normalization keeps activations trainable. Scale comes from stacking many blocks and widening the internal dimensions.\n\nFor product work, you rarely tune transformer blocks directly, but knowing the structure helps explain system behavior. The model is not looking up sentences from a database. It is repeatedly transforming token vectors through a large learned computation graph until the final layer produces a distribution over the next token."
+  },
+  {
+    "id": "pretraining",
+    "order": 7,
+    "chapter": "Model Lifecycle",
+    "title": "Pretraining",
+    "read_time_min": 4,
+    "is_learned": false,
+    "content": "Pretraining is the phase where a foundation model learns broad patterns from massive datasets. For LLMs, the usual objective is some form of token prediction. The model is not directly taught to be helpful; it is trained to model structure in text and other data.\n\nThis phase creates most of the raw capability: language, code patterns, facts, reasoning traces, styles, and latent associations. The result is a base model that can continue text but may not reliably follow instructions or behave like a product assistant.\n\nPretraining matters because downstream behavior is constrained by what the base model learned. Prompting and post-training can steer capability, but they do not magically create unlimited competence. If the base model lacks a capability, orchestration can only compensate so far."
+  },
+  {
+    "id": "post-training",
+    "order": 8,
+    "chapter": "Model Lifecycle",
+    "title": "Post-Training",
+    "read_time_min": 5,
+    "is_learned": false,
+    "content": "Post-training turns a raw pretrained model into something usable. It includes instruction tuning, preference optimization, safety training, tool-use examples, refusals, style shaping, and sometimes domain-specific fine-tuning.\n\nThe key distinction is that post-training usually changes behavior more than raw knowledge. It teaches the model how to respond to requests, when to ask clarifying questions, how to format answers, how to use tools, and what kinds of outputs are disallowed.\n\nMany model differences that users feel are post-training differences: verbosity, helpfulness, refusal style, coding discipline, willingness to follow schemas, and tool-calling reliability. When choosing a model, evaluate the finished behavior, not just the presumed architecture or parameter count."
+  },
+  {
+    "id": "instruction-tuning",
+    "order": 9,
+    "chapter": "Model Lifecycle",
+    "title": "Instruction Tuning",
+    "read_time_min": 4,
+    "is_learned": false,
+    "content": "Instruction tuning trains a model on examples of tasks and desired responses. The goal is to make the model treat user input as an instruction to satisfy, not merely text to continue.\n\nA base model might continue a prompt with more examples, imitate a style, or complete a document. An instruction-tuned model is more likely to answer, transform, classify, summarize, explain, or refuse according to the request.\n\nThis matters because prompting assumes an instruction-following prior. When a model ignores constraints, over-explains, fails to use a schema, or treats examples oddly, the issue may be prompt design, but it may also be the model's post-training. Good instruction following is a learned product behavior, not an automatic property of language modeling."
+  },
+  {
+    "id": "preference-optimization",
+    "order": 10,
+    "chapter": "Model Lifecycle",
+    "title": "Preference Optimization",
+    "read_time_min": 5,
+    "is_learned": false,
+    "content": "Preference optimization trains a model toward outputs humans or other evaluators prefer. RLHF, RLAIF, DPO, and related methods all try to move behavior from merely plausible toward useful, harmless, honest, or stylistically aligned.\n\nThe core idea is comparative signal. Instead of only showing the model one correct answer, trainers collect or synthesize preferences between outputs. The model learns which responses are better under a target policy.\n\nPreference optimization is powerful but imperfect. It can improve helpfulness and reduce obvious bad behavior, but it can also teach polished overconfidence, excessive agreeableness, or reward-hacking-like patterns if the preference data is shallow. For application builders, this is why you still need evals around the behavior you actually care about."
+  },
+  {
+    "id": "fine-tuning",
+    "order": 11,
+    "chapter": "Model Optimization",
+    "title": "Fine-Tuning",
+    "read_time_min": 5,
+    "is_learned": false,
+    "content": "Fine-tuning updates a model using additional training examples. In product settings, it is usually used to change style, format reliability, domain behavior, tool-calling patterns, or classification boundaries, not to upload a giant knowledge base.\n\nA good fine-tuning dataset looks like the target production distribution. It contains inputs the model will really see and outputs you would be happy to ship. Bad fine-tuning data teaches bad habits at scale.\n\nFine-tuning is not the first tool for every problem. If the model lacks context, use retrieval. If the instruction is unclear, improve the prompt. If the output shape is unstable, try structured outputs. Fine-tuning becomes attractive when you have repeated failures, clear target behavior, and enough high-quality examples to teach that behavior."
+  },
+  {
+    "id": "lora-and-adapters",
+    "order": 12,
+    "chapter": "Model Optimization",
+    "title": "LoRA And Adapters",
+    "read_time_min": 5,
+    "is_learned": false,
+    "content": "LoRA and adapter methods fine-tune models by adding or modifying a small number of trainable parameters rather than updating the entire model. This makes customization cheaper, faster, and easier to store.\n\nThe idea is that many behavioral changes can be represented as low-rank or modular updates on top of a frozen base model. Instead of producing a whole new model checkpoint, you produce a compact delta that can be loaded with the base.\n\nAdapters are especially useful in open-weight workflows where you want multiple domain or style variants. The tradeoff is operational complexity: you now manage base models, adapter compatibility, merge choices, inference overhead, and evaluation for each variant. A small adapter can still cause a large behavioral regression."
+  },
+  {
+    "id": "distillation",
+    "order": 13,
+    "chapter": "Model Optimization",
+    "title": "Distillation",
+    "read_time_min": 4,
+    "is_learned": false,
+    "content": "Distillation trains a smaller or cheaper model to imitate a larger or stronger model. The teacher produces outputs, rationales, labels, or preferences; the student learns to reproduce the useful behavior.\n\nThis is common when a frontier model is too expensive or slow for production volume. You use the strong model to generate or label data, then train a smaller model for the narrower task. The student may not inherit all general capabilities, but it can become very good at the specific distribution.\n\nThe risk is copying teacher mistakes and losing robustness outside the distilled domain. Distillation works best when the task is well-scoped, the generated data is filtered, and the student is evaluated on real cases rather than only teacher-approved examples."
+  },
+  {
+    "id": "quantization",
+    "order": 14,
+    "chapter": "Model Optimization",
+    "title": "Quantization",
+    "read_time_min": 4,
+    "is_learned": false,
+    "content": "Quantization reduces the numerical precision of model weights, activations, or caches to save memory and improve inference efficiency. A model that normally uses 16-bit values may be represented with 8-bit, 4-bit, or more specialized formats.\n\nThe practical goal is to fit larger models on smaller hardware or serve more requests with the same hardware. The tradeoff is possible quality loss, especially on sensitive tasks, long contexts, or models pushed to very low precision.\n\nQuantization is not just a compression checkbox. Different layers and workloads tolerate precision loss differently. If you quantize a model for production, evaluate the actual tasks: tool calls, code generation, structured outputs, retrieval-grounded answers, and edge cases may degrade in different ways."
+  },
+  {
+    "id": "embeddings-for-genai",
+    "order": 15,
+    "chapter": "Retrieval",
+    "title": "Embeddings For Generative AI",
+    "read_time_min": 4,
+    "is_learned": false,
+    "content": "Embeddings turn content into vectors that support similarity search. In generative AI systems, they are most often used to retrieve relevant context before asking a model to answer or act.\n\nThe important point is that embeddings retrieve relatedness, not truth. They are excellent for finding semantically nearby passages, examples, tickets, code files, or memories. They do not decide whether the retrieved content is current, authoritative, sufficient, or safe to use.\n\nEmbedding quality depends on the embedding model, chunking strategy, metadata, query rewriting, and ranking pipeline. If a RAG system gives bad answers, the generator may be innocent. The failure may be that the right context was never retrieved, or the retrieved context contained too much irrelevant material."
+  },
+  {
+    "id": "rag",
+    "order": 16,
+    "chapter": "Retrieval",
+    "title": "Retrieval-Augmented Generation",
+    "read_time_min": 5,
+    "is_learned": false,
+    "content": "RAG is the pattern of retrieving external information and inserting it into the model's context before generation. It is the default architecture when answers depend on private documents, changing data, or large corpora that should not be memorized by the model.\n\nA RAG system has several separable parts: document ingestion, chunking, indexing, query understanding, retrieval, reranking, context assembly, generation, citation or provenance handling, and evaluation. Each part can fail independently.\n\nThe main mistake is treating RAG as vector search plus a prompt. Production RAG is a relevance pipeline. You need to know whether failure came from missing documents, poor chunks, weak retrieval, bad ranking, insufficient context, conflicting sources, or a generator that ignored the evidence."
+  },
+  {
+    "id": "chunking",
+    "order": 17,
+    "chapter": "Retrieval",
+    "title": "Chunking",
+    "read_time_min": 5,
+    "is_learned": false,
+    "content": "Chunking is the process of splitting source material into units that can be embedded, retrieved, and passed to a model. It sounds mechanical, but it strongly affects RAG quality.\n\nChunks should preserve meaning. If they are too small, they lose context and retrieved passages become cryptic. If they are too large, retrieval becomes noisy and the model receives irrelevant text. Good chunking respects document structure: headings, sections, tables, code blocks, API references, and semantic boundaries.\n\nThere is no universal chunk size. Legal contracts, code repositories, support articles, and research papers need different strategies. Evaluate chunking by asking whether retrieved chunks contain enough information to answer real questions without forcing the model to reconstruct missing context."
+  },
+  {
+    "id": "reranking",
+    "order": 18,
+    "chapter": "Retrieval",
+    "title": "Reranking",
+    "read_time_min": 4,
+    "is_learned": false,
+    "content": "Reranking is a second-stage retrieval step that reorders candidate documents or chunks after an initial broad search. The first retriever prioritizes recall; the reranker improves precision.\n\nThis is useful because fast vector search often returns semantically adjacent but not actually answer-bearing chunks. A reranker can compare the query and candidate more carefully, promoting passages that directly address the need.\n\nIn a RAG system, reranking often matters more than changing the generator model. If the answer depends on one exact policy paragraph or function definition, the model needs that paragraph near the top of context. Better generation cannot reliably fix bad evidence ordering. The cost is additional latency and another model or scoring component to evaluate."
+  },
+  {
+    "id": "hybrid-search",
+    "order": 19,
+    "chapter": "Retrieval",
+    "title": "Hybrid Search",
+    "read_time_min": 4,
+    "is_learned": false,
+    "content": "Hybrid search combines semantic retrieval with lexical retrieval. Semantic search finds meaning-adjacent content; lexical search finds exact terms, identifiers, error messages, product names, codes, and rare strings.\n\nGenerative AI systems often need both. A support query may be phrased loosely, which favors embeddings. A stack trace, statute number, database field, or API method requires exact matching. Pure vector search can miss these because rare symbols may not be represented well semantically.\n\nHybrid search is especially important for technical corpora. A good retrieval pipeline may combine keyword search, vector search, metadata filters, recency filters, and reranking. The goal is not elegance; it is getting the right evidence into the model's context."
+  },
+  {
+    "id": "grounding",
+    "order": 20,
+    "chapter": "Reliability",
+    "title": "Grounding",
+    "read_time_min": 4,
+    "is_learned": false,
+    "content": "Grounding means tying a model's output to supplied evidence or allowed sources of truth. A grounded answer should be explainable from the context, tool results, database records, or documents the system provided.\n\nGrounding is not automatic just because you use RAG. The model can ignore evidence, merge conflicting passages, overgeneralize, or add plausible unsupported claims. A grounded system needs retrieval quality, clear instructions, evidence-aware output design, and evaluation that checks source faithfulness.\n\nThe practical test is simple: if you remove the retrieved context, should the answer still be allowed? For many enterprise and technical tasks, the answer is no. The model should answer from evidence or say what evidence is missing."
+  },
+  {
+    "id": "hallucination",
+    "order": 21,
+    "chapter": "Reliability",
+    "title": "Hallucination",
+    "read_time_min": 5,
+    "is_learned": false,
+    "content": "A hallucination is unsupported output presented as fact. It is not only a model defect; it is often a system design failure. The model was asked to produce an answer, but the system did not provide enough evidence, constrain the task, verify the result, or allow graceful uncertainty.\n\nHallucination risk rises when the prompt demands completeness, the source material is absent or conflicting, the user asks about obscure facts, or the output format rewards confidence. RAG can reduce hallucination, but weak retrieval can also create new hallucinations by supplying misleading partial evidence.\n\nThe fix is rarely one sentence like 'do not hallucinate'. Better controls include source-grounded prompts, refusal paths, schema constraints, retrieval diagnostics, verification tools, evals, and product UX that distinguishes known facts from generated synthesis."
+  },
+  {
+    "id": "structured-outputs",
+    "order": 22,
+    "chapter": "Model Interaction",
+    "title": "Structured Outputs",
+    "read_time_min": 5,
+    "is_learned": false,
+    "content": "Structured outputs make a model return data in a specified shape, usually JSON matching a schema. This is essential when model output feeds software rather than a human reader.\n\nThe difference between 'please return JSON' and schema-constrained generation is large. A prompt can request a format, but the application still needs validation. Strong structured-output systems constrain or check the generated data so downstream code can trust fields, types, and required properties more reliably.\n\nUse structured outputs for extraction, classification, routing, UI state generation, tool arguments, and any workflow where malformed text becomes a bug. Still design for refusal, partial data, and validation failure. A schema guarantees shape better than truth; it does not guarantee that the values are correct."
+  },
+  {
+    "id": "function-calling",
+    "order": 23,
+    "chapter": "Model Interaction",
+    "title": "Function Calling",
+    "read_time_min": 5,
+    "is_learned": false,
+    "content": "Function calling lets a model choose a declared function or tool and produce arguments for it. The model does not execute the function. Your application validates the arguments, checks permissions, runs the tool, and feeds results back.\n\nThis pattern turns language understanding into software control. A user can ask for a calendar change, database lookup, code search, or payment estimate, and the model can map the request into a typed operation.\n\nThe hard parts are not only schema design. You need tool descriptions the model can understand, argument validation, authorization, idempotency, error handling, user confirmation for risky actions, and evals for tool choice. Function calling is where LLM products stop being chatbots and start becoming interfaces to real systems."
+  },
+  {
+    "id": "tool-design-for-agents",
+    "order": 24,
+    "chapter": "Agents",
+    "title": "Tool Design For Agents",
+    "read_time_min": 5,
+    "is_learned": false,
+    "content": "Tools for agents should be designed for model use, not only human developer use. A normal API may expose too many parameters, return too much data, or require implicit domain knowledge. An agent-friendly tool has a clear name, narrow purpose, descriptive schema, useful errors, and compact results.\n\nThe model chooses tools based on descriptions and observed outcomes. If two tools overlap confusingly, the agent may pick randomly. If a tool returns a giant unfiltered payload, the agent wastes context and may miss the relevant part. If errors are cryptic, recovery gets worse.\n\nThink of tool design as interface design for a junior operator with excellent language ability but limited context. Make the action space legible, bounded, and easy to evaluate."
+  },
+  {
+    "id": "prompting-as-specification",
+    "order": 25,
+    "chapter": "Model Interaction",
+    "title": "Prompting As Specification",
+    "read_time_min": 4,
+    "is_learned": false,
+    "content": "A prompt is a temporary specification for model behavior. Good prompts define the task, context, constraints, output shape, and success criteria at the right level of detail.\n\nFor technical users, the useful shift is from magic wording to interface design. The model should not have to infer whether you want breadth or depth, whether unsupported claims are allowed, whether code should be production-grade, or what format downstream software expects.\n\nBad prompts often mix goals, examples, policies, and irrelevant background in one blob. Better prompts separate durable instructions from task-specific context, put reusable prefixes where caching can help, and make failure modes explicit. Prompting is not dead because models improved; it just becomes more about context control than clever phrasing."
+  },
+  {
+    "id": "system-prompts",
+    "order": 26,
+    "chapter": "Model Interaction",
+    "title": "System Prompts",
+    "read_time_min": 4,
+    "is_learned": false,
+    "content": "A system prompt defines durable behavior for a model session or application. It can set role, boundaries, output style, tool-use policy, safety constraints, and product-specific norms.\n\nThe system prompt should be clear and boring. It is not a place for poetic identity or a thousand edge-case instructions. Long system prompts can become contradictory, hard to maintain, expensive, and difficult to evaluate.\n\nGood system prompts operate at the right altitude: principles and defaults that apply broadly, with task-specific details supplied later. If a behavior matters, test it. If a rule is only relevant to one workflow, keep it near that workflow's prompt or code path. Treat system prompts as product code: version them, review them, and evaluate changes."
+  },
+  {
+    "id": "context-engineering",
+    "order": 27,
+    "chapter": "Context",
+    "title": "Context Engineering",
+    "read_time_min": 5,
+    "is_learned": false,
+    "content": "Context engineering is the discipline of deciding what information enters the model's context window. It includes system instructions, user messages, retrieved documents, tool results, memory, examples, schemas, summaries, and state.\n\nThis is broader than prompt engineering. In an agent, the context changes over time as the system explores, calls tools, stores findings, drops stale information, and prepares the next step. The model's behavior depends heavily on this evolving information environment.\n\nA good context is relevant, sufficient, current, compact, and well-structured. A bad context is bloated with logs, old mistakes, duplicated instructions, irrelevant retrieved chunks, and untrusted content. For agentic systems, context engineering is often the difference between impressive short demos and reliable long-running work."
+  },
+  {
+    "id": "prompt-caching",
+    "order": 28,
+    "chapter": "Inference",
+    "title": "Prompt Caching",
+    "read_time_min": 4,
+    "is_learned": false,
+    "content": "Prompt caching reduces cost or latency by reusing computation for repeated prompt prefixes. If many requests share the same system prompt, tool schemas, policy text, or document prefix, the provider or serving stack may cache that shared portion.\n\nThis matters for agent systems because tool definitions and long instructions can be large. If the stable prefix is deterministic and placed before request-specific content, caching can make repeated calls cheaper and faster.\n\nPrompt caching is not the same as agent memory. It does not mean the model remembers your prior request semantically. It is an inference optimization. Design prompts so reusable content is stable, but do not rely on caching for correctness. The system should work even on a cache miss."
+  },
+  {
+    "id": "kv-cache",
+    "order": 29,
+    "chapter": "Inference",
+    "title": "KV Cache",
+    "read_time_min": 6,
+    "is_learned": false,
+    "content": "The KV cache stores key and value tensors from previous tokens during autoregressive generation. Without it, the model would repeatedly recompute attention information for the entire prefix every time it generated the next token.\n\nGeneration has a prefill phase and a decode phase. Prefill processes the prompt and builds internal state. Decode generates one token at a time while reusing cached keys and values. This is why long prompts can be expensive upfront and long outputs can be sensitive to cache memory.\n\nKV cache is a serving-level concept, not product memory. It speeds up one generation sequence; it does not store user facts for later sessions. It also becomes a major memory bottleneck for long contexts, many concurrent users, beam search, and large models. Cache quantization, offloading, paging, and sliding-window attention are all attempts to manage this tradeoff."
+  },
+  {
+    "id": "prefill-and-decode",
+    "order": 30,
+    "chapter": "Inference",
+    "title": "Prefill And Decode",
+    "read_time_min": 5,
+    "is_learned": false,
+    "content": "LLM inference is often split into prefill and decode. Prefill processes the input prompt in parallel and builds the KV cache. Decode generates output tokens sequentially, one step at a time.\n\nThis split explains latency metrics. Time to first token is dominated by scheduling, prompt length, prefill compute, and queueing. Tokens per second during generation is dominated by decode efficiency, cache access, batching, and memory bandwidth.\n\nFor applications, prefill-heavy workloads include long retrieved contexts and large tool schemas. Decode-heavy workloads include long-form writing and code generation. Optimizing them may require different tactics: prompt caching and context pruning for prefill; faster models, batching, speculative decoding, or shorter outputs for decode. A single 'model latency' number hides these separate bottlenecks."
+  },
+  {
+    "id": "speculative-decoding",
+    "order": 31,
+    "chapter": "Inference",
+    "title": "Speculative Decoding",
+    "read_time_min": 5,
+    "is_learned": false,
+    "content": "Speculative decoding speeds generation by using a cheaper draft model or draft mechanism to propose several tokens, then having the larger target model verify them. Accepted tokens are emitted faster than if the large model produced every token alone.\n\nThe reason this can work is that many next tokens are predictable enough for a smaller model. When the draft is right, the target model validates multiple steps in fewer expensive passes. When the draft is wrong, the system falls back without changing the target distribution if implemented correctly.\n\nSpeculative decoding is mainly a serving optimization. It can improve throughput and latency, but it adds complexity: draft model choice, acceptance rates, batching interactions, memory use, and quality verification. Product teams experience it as faster streaming, not a new model capability."
+  },
+  {
+    "id": "sampling-temperature-top-p",
+    "order": 32,
+    "chapter": "Inference",
+    "title": "Sampling, Temperature, And Top-p",
+    "read_time_min": 5,
+    "is_learned": false,
+    "content": "Decoding settings shape how the model chooses tokens from its probability distribution. Temperature changes sharpness: lower values make high-probability tokens more dominant; higher values allow more variety. Top-p limits sampling to a nucleus of likely tokens whose cumulative probability crosses a threshold.\n\nThese settings do not make the model smarter. They change randomness and diversity. Low temperature is useful for extraction, classification, tool arguments, and deterministic workflows. Higher diversity can help brainstorming, creative writing, and generating alternatives.\n\nFor technical products, decoding should be part of the eval matrix. A setting that feels good in chat may break schemas or increase unsupported claims. If correctness matters, constrain outputs structurally rather than hoping the right temperature makes behavior reliable."
+  },
+  {
+    "id": "long-context-models",
+    "order": 33,
+    "chapter": "Context",
+    "title": "Long-Context Models",
+    "read_time_min": 5,
+    "is_learned": false,
+    "content": "Long-context models can process very large inputs in a single request, sometimes hundreds of thousands or millions of tokens depending on the model. This changes what is possible: whole codebases, long transcripts, large contracts, and multi-document reasoning can fit without traditional retrieval.\n\nBut long context is not a replacement for information architecture. The model may still miss small details, over-attend to recent or salient text, struggle with conflicting evidence, or waste compute on irrelevant material. Long context also increases cost and latency.\n\nUse long context when the task genuinely requires broad cross-document synthesis or when retrieval would lose important global structure. Use retrieval or summarization when the question needs a few precise facts. The best systems often combine both."
+  },
+  {
+    "id": "context-compression",
+    "order": 34,
+    "chapter": "Context",
+    "title": "Context Compression",
+    "read_time_min": 5,
+    "is_learned": false,
+    "content": "Context compression reduces large histories, documents, or tool traces into smaller representations that preserve what the model needs next. It can be a summary, extracted state, decision log, memory record, code map, or structured scratchpad.\n\nThe risk is lossy compression. A summary can omit the one constraint that matters later. A compressed memory can freeze an early misunderstanding. A tool trace can be shortened so much that provenance disappears.\n\nGood compression is task-aware. For a coding agent, preserve files touched, tests run, failing errors, design decisions, and open questions. For research, preserve claims with evidence and uncertainty. Context compression should be evaluated like any other component: does the agent perform better after compression than with raw context or no context?"
+  },
+  {
+    "id": "agentic-systems",
+    "order": 35,
+    "chapter": "Agents",
+    "title": "Agentic Systems",
+    "read_time_min": 5,
+    "is_learned": false,
+    "content": "An agentic system lets a model choose steps toward a goal, often using tools, memory, retrieval, and feedback from the environment. The key feature is not that it sounds autonomous; it is that control flow is partly model-directed.\n\nA simple workflow might classify a ticket, retrieve a policy, draft a reply, and stop. An agent might inspect the ticket, decide it needs account history, call tools, notice missing data, ask for clarification, escalate, or revise its plan.\n\nAgentic systems are useful when the path is not known in advance. They are costly and risky when a deterministic workflow would do. The engineering question is not 'can this be an agent?' but 'which decisions should be delegated to the model, and how do we bound the consequences?'"
+  },
+  {
+    "id": "workflows-vs-agents",
+    "order": 36,
+    "chapter": "Agents",
+    "title": "Workflows Vs Agents",
+    "read_time_min": 5,
+    "is_learned": false,
+    "content": "Workflows have predefined control flow. Agents decide more of the control flow at runtime. Both can use LLMs, tools, retrieval, and structured outputs.\n\nThe distinction matters because autonomy creates new failure modes. Workflows are easier to test, explain, and constrain. Agents are more flexible when tasks require exploration, adaptation, or multi-step recovery. A code repair task, for example, may need agentic exploration; a support refund policy check may be better as a workflow.\n\nMany production systems should start as workflows and add agentic choice only where the fixed path breaks. This keeps the system legible. The best architecture is often a mostly deterministic skeleton with local model decisions at points where language understanding or judgment is genuinely needed."
+  },
+  {
+    "id": "planning-in-agents",
+    "order": 37,
+    "chapter": "Agents",
+    "title": "Planning In Agents",
+    "read_time_min": 5,
+    "is_learned": false,
+    "content": "Planning is the agent's attempt to decompose a goal into steps. It can be explicit, with a written plan, or implicit, embedded in the model's next actions.\n\nPlans help when tasks are long, ambiguous, or require coordination across tools. They give the agent a temporary structure and give the system something to inspect. But plans can also become theater: plausible lists that are not grounded in the environment and are abandoned after the first obstacle.\n\nFor real agents, planning should be coupled to feedback. The agent should revise the plan after tool results, errors, or new constraints. A useful plan is not a promise; it is a working hypothesis that reduces confusion and makes progress auditable."
+  },
+  {
+    "id": "reflection-in-agents",
+    "order": 38,
+    "chapter": "Agents",
+    "title": "Reflection In Agents",
+    "read_time_min": 4,
+    "is_learned": false,
+    "content": "Reflection is when an agent evaluates its own work, state, or next action. It might check whether an answer satisfies requirements, whether a tool result contradicts the plan, or whether a previous step introduced an error.\n\nReflection can improve reliability, but only if it is grounded. A model casually reviewing its own unsupported answer may simply produce a more confident unsupported answer. Reflection works better when it has concrete artifacts: tests, schemas, diffs, retrieved evidence, logs, or explicit acceptance criteria.\n\nUse reflection sparingly. Every reflective loop adds cost and latency. The goal is not to make the agent think forever; it is to insert verification at points where mistakes are likely and externally checkable."
+  },
+  {
+    "id": "agent-memory",
+    "order": 39,
+    "chapter": "Agents",
+    "title": "Agent Memory",
+    "read_time_min": 6,
+    "is_learned": false,
+    "content": "Agent memory is information preserved outside the immediate context window and made available later. It can store user preferences, project facts, task state, decisions, summaries, errors, or learned strategies.\n\nMemory is not one thing. Short-term memory may be the current context. Episodic memory may store what happened in previous sessions. Semantic memory may store durable facts. Procedural memory may store how to perform recurring tasks. In software agents, memory is often just files, databases, vector stores, logs, or structured project notes.\n\nThe hard problems are write filtering, retrieval, contradiction handling, privacy, and decay. If the agent writes everything, memory becomes noise. If it retrieves the wrong memory, it can anchor on stale facts. Good memory systems are selective, inspectable, editable, and evaluated against real tasks."
+  },
+  {
+    "id": "episodic-vs-semantic-memory",
+    "order": 40,
+    "chapter": "Agents",
+    "title": "Episodic Vs Semantic Memory",
+    "read_time_min": 5,
+    "is_learned": false,
+    "content": "Episodic memory records events: what happened, when, in which task, with what outcome. Semantic memory stores distilled facts: preferences, project conventions, stable domain knowledge, and reusable conclusions.\n\nBoth matter for agents. A coding agent may need episodic memory to know that a test failed yesterday after a certain refactor. It may need semantic memory to know that the project uses a specific API pattern. Mixing them blindly creates clutter: a transient event can be mistaken for a durable rule.\n\nGood memory design separates raw history from curated knowledge. Raw logs are useful for audit and debugging. Durable memory should be promoted intentionally, with enough provenance to know where it came from and when it might expire."
+  },
+  {
+    "id": "memory-retrieval",
+    "order": 41,
+    "chapter": "Agents",
+    "title": "Memory Retrieval",
+    "read_time_min": 5,
+    "is_learned": false,
+    "content": "Memory retrieval decides which stored memories enter the model's context. This is the core of practical memory. A memory that is never retrieved is useless; a memory retrieved at the wrong time is harmful.\n\nRetrieval can use recency, semantic similarity, explicit keys, task type, user identity, project path, graph links, or tool-selected lookup. Vector search alone is often insufficient because memory relevance is not only semantic. Time, authority, scope, and current goal matter.\n\nA robust memory system should support forgetting, replacement, and conflict detection. If the user changes a preference, the old preference should not keep resurfacing. If two memories disagree, the agent should not silently average them. Memory is a database problem as much as a model problem."
+  },
+  {
+    "id": "multi-agent-systems",
+    "order": 42,
+    "chapter": "Agents",
+    "title": "Multi-Agent Systems",
+    "read_time_min": 5,
+    "is_learned": false,
+    "content": "Multi-agent systems split work across multiple model-driven roles: planner, researcher, coder, reviewer, critic, executor, or domain specialist. The hope is specialization, parallelism, and better checks.\n\nThe risk is coordination overhead. Multiple agents can amplify confusion, duplicate work, argue without evidence, or pass malformed state. If each agent sees different context, the handoff quality becomes critical. If every agent sees all context, the system may waste tokens and lose isolation.\n\nUse multiple agents when there is a real separation of concerns: independent subtasks, different tools, different risk levels, or useful adversarial review. Do not add agents just because the architecture diagram looks sophisticated. One well-scoped agent with good tools often beats five vague personas."
+  },
+  {
+    "id": "handoffs",
+    "order": 43,
+    "chapter": "Agents",
+    "title": "Handoffs",
+    "read_time_min": 4,
+    "is_learned": false,
+    "content": "A handoff transfers control or responsibility from one agent or workflow step to another. In multi-agent systems, handoffs are where context, intent, constraints, and state must be preserved.\n\nA bad handoff loses the reason behind decisions. The receiving agent gets a vague task like 'continue this' without knowing what was tried, what failed, what matters, or what should not be touched. A good handoff includes goal, current state, relevant artifacts, constraints, open questions, and expected output.\n\nHandoffs should be designed as interfaces, not chat messages. If the receiver needs structured state, pass structured state. If the handoff can trigger risky tools or permissions, treat it as a control boundary with its own guardrails."
+  },
+  {
+    "id": "agent-observability",
+    "order": 44,
+    "chapter": "Agents",
+    "title": "Agent Observability",
+    "read_time_min": 5,
+    "is_learned": false,
+    "content": "Agent observability means being able to inspect what the agent saw, decided, called, received, wrote, and returned. Without it, failures become stories instead of debuggable events.\n\nUseful traces include prompts, retrieved context, tool calls, tool arguments, tool outputs, model outputs, latency, token usage, errors, retries, and guardrail decisions. For long-running agents, you also need task state and memory writes.\n\nObservability is not only for developers. It supports evals, safety review, user trust, cost control, and incident response. The challenge is privacy and volume: traces can contain sensitive data and become huge. A serious agent platform needs structured logging, redaction, sampling, retention policies, and replayable cases."
+  },
+  {
+    "id": "guardrails",
+    "order": 45,
+    "chapter": "Safety",
+    "title": "Guardrails",
+    "read_time_min": 5,
+    "is_learned": false,
+    "content": "Guardrails are controls around model behavior and system actions. They can filter inputs, constrain outputs, validate tool arguments, block risky actions, require user confirmation, enforce policies, or monitor final responses.\n\nThe important distinction is where the guardrail runs. A prompt-level instruction is weak for high-risk behavior. A schema validator catches malformed output but not necessarily unsafe intent. A tool permission check can prevent external side effects even if the model asks for them.\n\nGood guardrails are layered. Do not rely on the model to police itself when the cost of failure is high. Use deterministic checks where possible, model-based checks where judgment is needed, and human approval where the system may affect money, identity, security, legal status, or irreversible data."
+  },
+  {
+    "id": "prompt-injection",
+    "order": 46,
+    "chapter": "Safety",
+    "title": "Prompt Injection",
+    "read_time_min": 5,
+    "is_learned": false,
+    "content": "Prompt injection happens when untrusted content tries to override or manipulate the model's instructions. In agentic systems, this can appear inside web pages, emails, documents, tickets, retrieved chunks, or tool outputs.\n\nThe basic problem is that the model reads instructions and data through the same channel: tokens. A document can contain text like 'ignore previous instructions' even though it should be treated as data. The model may follow it if the system does not separate trust boundaries clearly.\n\nMitigation requires more than telling the model not to obey injections. Use least-privilege tools, isolate untrusted content, quote or label retrieved data, require confirmation for side effects, validate tool calls, and design workflows so untrusted text cannot directly authorize actions."
+  },
+  {
+    "id": "tool-permissions",
+    "order": 47,
+    "chapter": "Safety",
+    "title": "Tool Permissions",
+    "read_time_min": 4,
+    "is_learned": false,
+    "content": "Tool permissions define what an agent is allowed to do. The principle is least privilege: give the model only the tools, scopes, and data access needed for the current task.\n\nThis matters because tool use turns text errors into real-world side effects. A hallucinated answer is bad; a hallucinated database deletion, email send, purchase, or permission change is worse. The application must own authorization. The model can request an action, but it should not be the authority that decides whether the action is allowed.\n\nUseful permission design includes read vs write separation, scoped credentials, dry-run modes, confirmation prompts, audit logs, rate limits, and reversible operations. Agents become safer when their action space is intentionally boring."
+  },
+  {
+    "id": "computer-use-agents",
+    "order": 48,
+    "chapter": "Agents",
+    "title": "Computer-Use Agents",
+    "read_time_min": 5,
+    "is_learned": false,
+    "content": "Computer-use agents interact with graphical interfaces: browsers, desktop apps, terminals, forms, and remote environments. Instead of only calling structured APIs, they perceive screens and take actions like clicking, typing, scrolling, and reading visual state.\n\nThis expands what agents can do, because many workflows do not expose clean APIs. It also makes reliability harder. GUIs are noisy, stateful, slow, visually ambiguous, and full of irreversible actions. The agent may click the wrong button, miss a modal, or act on stale screen state.\n\nGood computer-use systems need strong observation loops, permission boundaries, confirmations, screenshots or DOM traces, recovery strategies, and clear task scopes. They are powerful precisely because they operate in human software environments, which are also messy."
+  },
+  {
+    "id": "mcp",
+    "order": 49,
+    "chapter": "Agents",
+    "title": "Model Context Protocol",
+    "read_time_min": 5,
+    "is_learned": false,
+    "content": "Model Context Protocol is an open pattern for connecting AI systems to external tools and data sources through standardized servers. The goal is to reduce custom one-off integrations between every model client and every tool provider.\n\nConceptually, MCP gives agents a way to discover and use capabilities such as files, databases, issue trackers, calendars, search systems, and internal services. It shifts integration work from hardcoded application glue toward reusable tool servers.\n\nThe protocol does not remove the hard problems. Tool descriptions still need to be model-friendly. Permissions still matter. Returned data still consumes context. Agents still need evals for tool choice and recovery. MCP is infrastructure for the agent ecosystem, not a guarantee that agents will behave well."
+  },
+  {
+    "id": "evals-for-llm-systems",
+    "order": 50,
+    "chapter": "Evaluation",
+    "title": "Evals For LLM Systems",
+    "read_time_min": 6,
+    "is_learned": false,
+    "content": "An eval is a repeatable way to measure whether an LLM system behaves acceptably on representative cases. It is the difference between improving a system and merely feeling that it improved.\n\nLLM evals should test the whole system, not just the base model. If a RAG assistant fails, the culprit may be retrieval, reranking, prompt assembly, generation, citation formatting, or refusal logic. If an agent fails, the culprit may be tool choice, permissions, memory, planning, or recovery.\n\nGood eval sets include ordinary cases, edge cases, adversarial inputs, regressions from past bugs, and examples that represent real product risk. The scoring method can be exact match, human review, model grading, unit tests, schema validation, or task success. The method matters less than having stable cases you actually trust."
+  },
+  {
+    "id": "llm-as-judge",
+    "order": 51,
+    "chapter": "Evaluation",
+    "title": "LLM-As-Judge",
+    "read_time_min": 5,
+    "is_learned": false,
+    "content": "LLM-as-judge uses a model to grade model outputs. It is useful when outputs are open-ended and exact matching is too brittle: summaries, explanations, support replies, grounded answers, or agent trajectories.\n\nThe judge is itself a model, so it can be biased, inconsistent, overly forgiving, or sensitive to prompt wording. It may prefer fluent answers over correct ones. It may miss subtle factual errors. It may also leak the same blind spots as the model being judged.\n\nUse model judges as scalable signals, not unquestioned truth. Calibrate them against human labels, write clear rubrics, use pairwise comparisons when helpful, hide irrelevant metadata, and track judge drift when changing judge models. For high-stakes claims, combine model judgment with deterministic checks or human review."
+  },
+  {
+    "id": "golden-datasets",
+    "order": 52,
+    "chapter": "Evaluation",
+    "title": "Golden Datasets",
+    "read_time_min": 4,
+    "is_learned": false,
+    "content": "A golden dataset is a curated set of examples used to evaluate system behavior over time. In LLM products, it should represent real tasks, important edge cases, and failures you never want to reintroduce.\n\nThe dataset does not need to be huge to be useful. Fifty carefully chosen cases can catch more regressions than thousands of generic examples. The key is coverage of product risk: unsupported claims, malformed JSON, bad tool calls, wrong retrieval, unsafe actions, privacy leaks, and confusing user intents.\n\nGolden datasets should evolve. Every production incident, surprising failure, or newly important workflow can become an eval case. Treat the dataset as product infrastructure. If it gets stale, your evals will optimize for yesterday's problems."
+  },
+  {
+    "id": "agent-evals",
+    "order": 53,
+    "chapter": "Evaluation",
+    "title": "Agent Evals",
+    "read_time_min": 6,
+    "is_learned": false,
+    "content": "Agent evals measure task success across multi-step behavior. They must inspect more than final text. An agent can produce a nice final answer after using the wrong tool, skipping required checks, leaking data, or taking an unsafe shortcut.\n\nUseful agent evals track trajectory: plan quality, tool selection, argument correctness, state updates, recovery from errors, memory writes, permissions, cost, latency, and final outcome. For coding agents, tests and diffs are natural scoring artifacts. For research agents, evidence quality and claim support matter.\n\nAgent evals are harder than chat evals because the environment matters. You need reproducible tasks, seeded data, sandboxed tools, clear success criteria, and traces. Without this, agent quality becomes demo-driven: impressive when watched, fragile when repeated."
+  },
+  {
+    "id": "synthetic-data-for-llms",
+    "order": 54,
+    "chapter": "Data",
+    "title": "Synthetic Data For LLM Systems",
+    "read_time_min": 5,
+    "is_learned": false,
+    "content": "Synthetic data is data generated by models or programs for training, fine-tuning, evaluation, or testing. In LLM systems, it can create examples, labels, conversations, tool traces, edge cases, and adversarial prompts.\n\nThe value is scale and coverage. A strong model can help produce many examples of rare formats or workflows. The danger is distribution drift and self-reinforcing errors. Synthetic data often looks clean in ways real user data does not. It may also encode the teacher model's biases and blind spots.\n\nUse synthetic data as a multiplier, not a substitute for reality. Filter it, diversify it, mix it with real cases, and evaluate on held-out production-like examples. The question is not whether data is synthetic; it is whether it improves measured behavior on the target distribution."
+  },
+  {
+    "id": "data-contamination",
+    "order": 55,
+    "chapter": "Data",
+    "title": "Data Contamination",
+    "read_time_min": 4,
+    "is_learned": false,
+    "content": "Data contamination happens when evaluation examples, benchmark answers, or task-specific test data appear in training or tuning data. The model may then look capable because it has effectively seen the test.\n\nThis is especially tricky for public LLM benchmarks because web-scale pretraining can include benchmark-adjacent material, solutions, discussions, or paraphrases. For internal products, contamination can happen when production answers are used for fine-tuning and then reused in evals.\n\nContamination does not always mean intentional cheating. It is a data hygiene problem. Keep eval sets separate, track provenance, deduplicate aggressively, and create private tests when possible. If a model performs suspiciously well on a benchmark but fails on real variants, contamination or overfitting may be part of the story."
+  },
+  {
+    "id": "model-routing",
+    "order": 56,
+    "chapter": "System Design",
+    "title": "Model Routing",
+    "read_time_min": 5,
+    "is_learned": false,
+    "content": "Model routing sends different requests to different models or workflows based on task type, risk, cost, latency, or required capability. Not every request needs the strongest model. Not every request should use the cheapest one.\n\nA router might send simple classification to a small model, complex reasoning to a stronger model, sensitive actions to a guarded workflow, and retrieval-heavy questions to a RAG path. Routing can be rule-based, model-based, embedding-based, or learned from evals.\n\nThe danger is silent misrouting. If the router underestimates task difficulty, the system may fail before the main model has a chance. Good routers expose confidence, support fallback, and are evaluated separately. Routing is one of the highest-leverage cost-quality controls in production generative AI."
+  },
+  {
+    "id": "fallbacks-and-retries",
+    "order": 57,
+    "chapter": "System Design",
+    "title": "Fallbacks And Retries",
+    "read_time_min": 4,
+    "is_learned": false,
+    "content": "Fallbacks and retries handle model or system failures: malformed output, tool errors, timeouts, refusals, weak answers, or low confidence. A retry can ask the same model again, use a stricter prompt, call a stronger model, retrieve more context, or switch to a human review path.\n\nRetries are not free quality. They add latency and cost, and repeated attempts can amplify bad assumptions. A retry that simply says 'try again' may produce a different wrong answer.\n\nGood fallback design is specific. If JSON validation fails, repair or regenerate against the schema. If retrieval confidence is low, ask for clarification or broaden search. If a tool fails, expose the error state. Treat fallback paths as part of the product, not exception handling you hope nobody sees."
+  },
+  {
+    "id": "cost-latency-quality-tradeoff",
+    "order": 58,
+    "chapter": "System Design",
+    "title": "Cost, Latency, And Quality",
+    "read_time_min": 5,
+    "is_learned": false,
+    "content": "Generative AI systems live inside a three-way tradeoff: cost, latency, and quality. Stronger models, longer contexts, more tool calls, reranking, reflection, and retries can improve results, but they usually cost more and take longer.\n\nThe right balance depends on the product moment. A background research task can spend minutes. An autocomplete interaction needs milliseconds or low seconds. A legal or financial workflow may justify stronger verification. A casual chat may prioritize responsiveness.\n\nDo not optimize blindly for one metric. Track user-visible latency, time to first token, total tokens, tool-call count, cache hit rate, model mix, and eval quality. The best system is often a portfolio: cheap fast paths for easy cases, expensive careful paths for hard or risky cases."
+  },
+  {
+    "id": "streaming-responses",
+    "order": 59,
+    "chapter": "System Design",
+    "title": "Streaming Responses",
+    "read_time_min": 4,
+    "is_learned": false,
+    "content": "Streaming sends model output to the user as it is generated. It improves perceived latency because the user sees progress before the full answer is complete.\n\nStreaming fits natural language answers, code generation, and long-form outputs. It is harder for structured outputs, tool plans, or content that must be fully validated before display. If the model streams a claim and later contradicts it, the UI has already shown the claim.\n\nProduct design should decide what is safe to stream. For low-risk prose, streaming feels alive. For actions, schemas, medical or legal advice, and tool-triggering steps, it may be better to wait, validate, and then display. Streaming is a UX tool, not a correctness guarantee."
+  },
+  {
+    "id": "json-mode-vs-structured-outputs",
+    "order": 60,
+    "chapter": "Model Interaction",
+    "title": "JSON Mode Vs Structured Outputs",
+    "read_time_min": 4,
+    "is_learned": false,
+    "content": "JSON mode and structured outputs solve related but different problems. JSON mode asks the model to produce syntactically valid JSON. Structured outputs try to make the JSON match a schema.\n\nValid JSON can still be useless: wrong fields, wrong types, missing required keys, extra keys, or values that violate business rules. Schema-constrained output reduces this failure surface, but the application should still validate.\n\nUse JSON mode when you only need parseable data and can tolerate flexible shape. Use structured outputs when downstream code expects a contract. For tool calls, schema quality is part of tool quality. A vague schema forces the model to infer too much; an overcomplicated schema increases failure and repair rates."
+  },
+  {
+    "id": "vision-language-models",
+    "order": 61,
+    "chapter": "Multimodal",
+    "title": "Vision-Language Models",
+    "read_time_min": 5,
+    "is_learned": false,
+    "content": "Vision-language models connect images and text. They can describe images, answer questions about visual content, read screenshots, inspect diagrams, interpret charts, and support multimodal agents.\n\nThe key product shift is that screenshots and documents become model-readable context. A computer-use agent can inspect the screen. A document assistant can reason over layout. A support tool can understand a user's uploaded photo.\n\nBut visual understanding is uneven. Models can miss small text, misread charts, infer objects that are not present, or struggle with spatial precision. For technical use, treat visual outputs as probabilistic unless verified. OCR, object detection, layout parsing, and domain-specific checks may still be needed around the model."
+  },
+  {
+    "id": "diffusion-models",
+    "order": 62,
+    "chapter": "Multimodal",
+    "title": "Diffusion Models",
+    "read_time_min": 5,
+    "is_learned": false,
+    "content": "Diffusion models generate data by learning to reverse a noise process. In image generation, training corrupts images with noise, and the model learns how to denoise step by step conditioned on text, image inputs, or other controls.\n\nThe practical intuition is iterative refinement from noise toward structure. Text conditioning guides what should appear. Additional controls can guide composition, style, pose, depth, edges, masks, or reference identity depending on the system.\n\nDiffusion is different from autoregressive text generation. It usually generates a whole image through denoising steps rather than one token at a time. Product concerns also differ: prompt sensitivity, seed control, editing masks, style consistency, safety filters, provenance, and rights around training data or generated outputs."
+  },
+  {
+    "id": "image-editing-models",
+    "order": 63,
+    "chapter": "Multimodal",
+    "title": "Image Editing Models",
+    "read_time_min": 4,
+    "is_learned": false,
+    "content": "Image editing models modify an existing image using text instructions, masks, reference images, or structural controls. The task is harder than pure generation because the model must preserve parts of the input while changing others.\n\nGood editing depends on constraint clarity. If the request is 'make it better', the model may change identity, lighting, layout, or style unpredictably. If the request specifies the region, desired change, and preservation constraints, results become more controllable.\n\nFor product use, editing quality is not only aesthetic. You may need identity preservation, text accuracy, brand consistency, transparent backgrounds, exact dimensions, or no change outside a mask. These are eval dimensions, not prompt wishes."
+  },
+  {
+    "id": "speech-and-audio-models",
+    "order": 64,
+    "chapter": "Multimodal",
+    "title": "Speech And Audio Models",
+    "read_time_min": 5,
+    "is_learned": false,
+    "content": "Speech and audio models handle transcription, speech generation, translation, speaker understanding, sound classification, and conversational voice interfaces. Voice changes the interaction loop because input and output are temporal, interruptible, and emotionally loaded.\n\nA voice assistant must manage latency differently from text chat. Users notice pauses, barge-in behavior, turn-taking, prosody, and whether the system sounds confident when it should not. Transcription errors can cascade into bad tool calls or wrong answers.\n\nTechnically, voice systems combine ASR, language understanding, dialogue policy, tools, and TTS. The best experiences feel like one model, but production reliability comes from handling partial transcripts, uncertainty, interruptions, background noise, and confirmation for risky actions."
+  },
+  {
+    "id": "text-to-sql",
+    "order": 65,
+    "chapter": "Applications",
+    "title": "Text-To-SQL",
+    "read_time_min": 5,
+    "is_learned": false,
+    "content": "Text-to-SQL converts natural language questions into database queries. It is one of the clearest examples of an LLM acting as an interface to structured systems.\n\nThe hard part is not only SQL syntax. The model needs schema understanding, business definitions, join paths, filter semantics, permissions, and awareness of ambiguous user language. 'Revenue last quarter' may mean different tables, time zones, accounting rules, or excluded categories.\n\nA production text-to-SQL system should inspect generated queries before execution, restrict access, avoid destructive statements, explain assumptions, and validate results. For many analytics products, the best UX is interactive: generate a query, show interpretation, allow correction, then execute. Trust comes from making the semantic mapping visible."
+  },
+  {
+    "id": "code-generation-agents",
+    "order": 66,
+    "chapter": "Applications",
+    "title": "Code Generation Agents",
+    "read_time_min": 6,
+    "is_learned": false,
+    "content": "Code generation agents operate inside a repository, not just a chat box. They read files, infer architecture, edit code, run tests, inspect errors, and iterate. This makes them much more powerful than one-shot code completion.\n\nThe agent's effectiveness depends on context and tools: file search, semantic code search, test commands, linters, package managers, browser checks, git diffs, and project instructions. A good coding agent behaves less like a code generator and more like a junior engineer with fast reading and editing ability.\n\nThe failure modes are also engineering failures: touching unrelated files, passing tests accidentally, ignoring conventions, overfitting to one error, or producing large unreviewable diffs. Strong coding-agent workflows use small tasks, clear ownership, tests, review, and traceable changes."
+  },
+  {
+    "id": "retrieval-for-code",
+    "order": 67,
+    "chapter": "Applications",
+    "title": "Retrieval For Codebases",
+    "read_time_min": 5,
+    "is_learned": false,
+    "content": "Codebase retrieval is different from document retrieval. Exact symbols, file paths, imports, call graphs, tests, and conventions matter. Pure semantic search can miss the one function name or config flag that controls behavior.\n\nGood code retrieval combines lexical search, AST-aware indexes, dependency graphs, embeddings, recent edits, test failures, and developer-provided instructions. The goal is to put the right local context in front of the model before it edits.\n\nFor coding agents, retrieval quality directly affects safety. If the agent sees only the file it edits, it may break callers. If it sees too much, it may drown in irrelevant code. The system should help the model build a compact map of the relevant surface area."
+  },
+  {
+    "id": "tool-result-summarization",
+    "order": 68,
+    "chapter": "Agents",
+    "title": "Tool Result Summarization",
+    "read_time_min": 4,
+    "is_learned": false,
+    "content": "Tool result summarization compresses large tool outputs before they enter future context. Search results, logs, traces, SQL rows, browser pages, and test output can overwhelm the model if pasted raw.\n\nThe summary should preserve task-relevant facts, errors, identifiers, and uncertainty. It should not turn evidence into unsupported conclusions. For example, a test summary should include failing test names, error messages, commands run, and changed assumptions, not just 'tests failed'.\n\nThis is a key agent pattern because tool use creates context faster than models can consume it. Summarization lets agents run longer, but it also creates a new trust boundary. If the summarizer drops the important clue, the next step may be confidently wrong."
+  },
+  {
+    "id": "state-machines-around-llms",
+    "order": 69,
+    "chapter": "System Design",
+    "title": "State Machines Around LLMs",
+    "read_time_min": 5,
+    "is_learned": false,
+    "content": "A state machine around an LLM makes the system's control flow explicit. Instead of letting the model decide everything, the application defines states such as collect information, retrieve evidence, draft, validate, ask confirmation, execute, and report.\n\nThis pattern is useful because LLMs are flexible but not inherently disciplined. A state machine can enforce required steps, prevent premature actions, and make retries understandable. The model can still perform language-heavy work within each state.\n\nFor many products, this is the sweet spot between a rigid workflow and a free agent. Keep deterministic control where correctness matters, and use the model where interpretation, generation, or judgment matters. The architecture becomes easier to test because state transitions are visible."
+  },
+  {
+    "id": "human-in-the-loop",
+    "order": 70,
+    "chapter": "Product",
+    "title": "Human-In-The-Loop",
+    "read_time_min": 4,
+    "is_learned": false,
+    "content": "Human-in-the-loop design decides when a person should review, approve, correct, or take over from an AI system. It is not a sign of failure. It is often the responsible design for uncertain or high-impact tasks.\n\nThe key is choosing the right loop. A human can label data, approve a tool action, review a draft, resolve ambiguity, handle exceptions, or audit outcomes. Each loop has different latency and cost.\n\nBad human review turns people into rubber stamps for machine output. Good review surfaces the model's evidence, uncertainty, planned action, and alternatives so the human can make a real decision. In agentic systems, human checkpoints are especially useful before irreversible actions or when permissions cross trust boundaries."
+  },
+  {
+    "id": "ai-ux-for-uncertainty",
+    "order": 71,
+    "chapter": "Product",
+    "title": "AI UX For Uncertainty",
+    "read_time_min": 5,
+    "is_learned": false,
+    "content": "AI interfaces need to represent uncertainty without making the product feel broken. A deterministic UI can show exact state. A generative UI often needs to show confidence, assumptions, missing information, and whether output is grounded or speculative.\n\nThe worst pattern is confident fluent text with no affordance for correction. Users may over-trust it when it is wrong and under-trust it when it is right. Better UX exposes sources, lets users refine intent, shows previews before actions, and distinguishes draft from executed result.\n\nFor agents, uncertainty UX also includes progress. The user should know what the agent is doing, what it has tried, where it is stuck, and when intervention is needed. Trust comes less from perfect answers than from legible behavior."
+  },
+  {
+    "id": "ai-product-evals",
+    "order": 72,
+    "chapter": "Product",
+    "title": "Product Evals",
+    "read_time_min": 5,
+    "is_learned": false,
+    "content": "Product evals measure whether the AI system creates the user outcome you actually care about. They are broader than model evals. A generated answer can be factually correct and still be too slow, too verbose, poorly timed, badly formatted, or unhelpful in the workflow.\n\nA useful product eval includes task success, user correction rate, time saved, escalation rate, trust signals, cost, latency, and failure severity. For agents, it may include number of steps, unnecessary tool calls, recovery from errors, and whether the user had to supervise constantly.\n\nThis matters because generative AI demos often optimize for impressiveness. Products need repeatability. The question is not 'does this look smart once?' It is 'does this reliably improve the workflow for the target user?'"
+  },
+  {
+    "id": "safety-classifiers",
+    "order": 73,
+    "chapter": "Safety",
+    "title": "Safety Classifiers",
+    "read_time_min": 4,
+    "is_learned": false,
+    "content": "Safety classifiers detect policy-relevant content such as self-harm, sexual content, violence, hate, privacy risk, cyber abuse, or other categories depending on the product. They can run on user input, retrieved content, tool outputs, model drafts, or final answers.\n\nThey are useful because the generator should not be the only safety mechanism. A separate classifier or policy check can block, route, redact, or require review before the system proceeds.\n\nClassifiers have tradeoffs. False positives frustrate users. False negatives create risk. Category definitions shift by product, jurisdiction, and audience. For serious systems, safety classification needs measurement, appeal paths, logging, and human review for ambiguous cases. It is product policy encoded as technical infrastructure."
+  },
+  {
+    "id": "privacy-in-agent-systems",
+    "order": 74,
+    "chapter": "Safety",
+    "title": "Privacy In Agent Systems",
+    "read_time_min": 5,
+    "is_learned": false,
+    "content": "Agentic systems increase privacy risk because they collect context, call tools, store memory, and may combine data across sources. The model may see emails, documents, credentials-adjacent logs, customer records, or personal preferences.\n\nPrivacy design should define what data enters the model, what is stored, what is sent to external services, what is logged, what can be retrieved later, and how users can inspect or delete it. Memory makes this more important because accidental retention can outlive the original task.\n\nA practical rule: do not give agents ambient access to everything. Use scoped permissions, data minimization, redaction, tenant isolation, retention limits, and explicit user controls. A helpful assistant that remembers everything can become a liability if memory is not governed."
+  },
+  {
+    "id": "model-selection",
+    "order": 75,
+    "chapter": "System Design",
+    "title": "Model Selection",
+    "read_time_min": 5,
+    "is_learned": false,
+    "content": "Model selection is choosing the right model for a task under constraints. The strongest model is not always the best product choice. You care about quality, latency, cost, context length, tool reliability, structured output support, safety behavior, language coverage, deployment constraints, and vendor risk.\n\nModel comparisons should be task-specific. A model that writes excellent prose may be weak at tool calling. A fast model may be good enough for routing but bad for synthesis. A long-context model may outperform RAG on some tasks and underperform on precise retrieval.\n\nChoose models with evals, not vibes. Build a test set from real workflows, compare candidates, and keep the option to route different task classes to different models. Model selection is an ongoing systems decision, not a one-time leaderboard lookup."
+  }
+]
